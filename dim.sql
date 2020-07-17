@@ -43,7 +43,8 @@ cost_per_service float NOT NULL,
 effective_from date NOT NULL,
 effective_to date NOT NULL,
 CONSTRAINT service_pk PRIMARY KEY (service_id)
- );
+ )
+  PARTITION BY HASH(service_type_id) PARTITIONS 6;
 
 CREATE TABLE DATES as 
 SELECT 
@@ -55,7 +56,7 @@ SELECT
   TO_CHAR( sd + rn, 'W' ) calendar_week_number,
   ( CASE
       WHEN TO_CHAR( sd + rn, 'D' ) IN ( 1, 2, 3, 4, 5, 6 ) THEN
-        NEXT_DAY( sd + rn, '—”¡¡Œ“¿' )
+        NEXT_DAY( sd + rn, '√ë√ì√Å√Å√é√í√Ä' )
       ELSE
         ( sd + rn )
     END ) week_ending_date,
