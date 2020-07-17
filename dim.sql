@@ -44,7 +44,7 @@ effective_from date NOT NULL,
 effective_to date NOT NULL,
 CONSTRAINT service_pk PRIMARY KEY (service_id)
  )
-  PARTITION BY HASH(service_type_id) PARTITIONS 6;
+  PARTITION BY HASH(service_type_id) PARTITIONS 8;
 
 CREATE TABLE DATES as 
 SELECT 
