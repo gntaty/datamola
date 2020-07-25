@@ -20,6 +20,7 @@ address             NVARCHAR2(100),
 city                NVARCHAR2(100),
 kindergarten_groups NVARCHAR2(50),
 group_scale int);
+ALTER TABLE gen_kindergarten MOVE TABLESPACE ts_p_attendances; 
 
 CREATE SEQUENCE kindergarten_id_seq; 
 ALTER TABLE gen_kindergarten ADD (group_num NUMBER);
@@ -30,6 +31,7 @@ valid_from      date,
 service        NVARCHAR2(50),
 type            NVARCHAR2(50),
 service_cost    float);
+ALTER TABLE gen_service_type MOVE TABLESPACE ts_p_attendances;
 
 CREATE SEQUENCE contract_id_seq; 
 CREATE SEQUENCE emp_contract_id_seq;
