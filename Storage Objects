@@ -1,9 +1,9 @@
 drop table data_excel;
-drop table gen_kindergarten;
-drop table gen_service_type;
+drop table sa_kindergarten;
+drop table sa_service_type;
 drop sequence kindergarten_id_seq;
-drop table ta_source_contracts;
-drop table ta_source_emp_contracts; 
+drop table sa_contracts;
+drop table sa_emp_contracts; 
 drop table sa_attendances;
 drop sequence contract_id_seq;
 drop sequence emp_contract_id_seq;
@@ -14,31 +14,30 @@ last_name   NVARCHAR2(50),
 gender      NVARCHAR2(6)
 ) tablespace SL_P_CONTRACTS;
 
-create table gen_kindergarten( --import data from groups.xlsx to generate data about groups, kindergartens and locations
+create table sa_kindergarten( --import data from groups.xlsx to generate data about groups, kindergartens and locations
 kindergarten        NVARCHAR2(100),
 address             NVARCHAR2(100),
 city                NVARCHAR2(100),
+country             NVARCHAR2(100),
 kindergarten_groups NVARCHAR2(50),
 group_scale int);
-ALTER TABLE gen_kindergarten MOVE TABLESPACE ts_p_attendances; 
+ALTER TABLE sa_kindergarten MOVE TABLESPACE ts_p_attendances; 
 
 CREATE SEQUENCE kindergarten_id_seq; 
-ALTER TABLE gen_kindergarten ADD (group_num NUMBER);
-UPDATE gen_kindergarten SET group_num = kindergarten_id_seq.NEXTVAL;
+ALTER TABLE sa_kindergarten ADD (group_num NUMBER);
+UPDATE sa_kindergarten SET group_num = kindergarten_id_seq.NEXTVAL;
 
-create table gen_service_type( -- import data from services.xlxs to generate data about services
-valid_from      date,
+create table sa_service_type( -- import data from services.xlxs to generate data about services 
+active_date            date,
 service        NVARCHAR2(50),
 type            NVARCHAR2(50),
 service_cost    float);
-ALTER TABLE gen_service_type MOVE TABLESPACE ts_p_attendances;
+ALTER TABLE sa_service_type MOVE TABLESPACE ts_p_attendances;
 
-CREATE SEQUENCE contract_id_seq; 
-CREATE SEQUENCE emp_contract_id_seq;
-
-create table ta_source_contracts as --generate data about children and their parents
+create table sa_contracts as --generate data about children and their parents
 select 
-          child_name
+        date_of_contract
+        ,child_name
         , child_lastname
         , gender
         , phone_number
@@ -48,7 +47,13 @@ select
         , parent_lastname2
         ,child_birht_day
 from (select 
-        c.first_name child_name
+TO_DATE(
+              TRUNC(
+                   DBMS_RANDOM.VALUE(TO_CHAR(DATE '2016-01-01','J')
+                                    ,TO_CHAR(DATE '2020-12-31','J')
+                                    )
+                    ),'J') date_of_contract 
+        ,c.first_name child_name
         ,b.last_name child_lastname
         ,c.gender
         ,ROUND(dbms_random.value(100000000000, 999999999999)) phone_number
@@ -69,18 +74,26 @@ data_excel a
 ,data_excel c)
 where rn< 5001;
 
-ALTER TABLE ta_source_contracts MOVE TABLESPACE SL_P_CONTRACTS;
-ALTER TABLE ta_source_contracts ADD (contract_num NUMBER);
-UPDATE ta_source_contracts SET contract_num = contract_id_seq.NEXTVAL;
+CREATE SEQUENCE contract_id_seq; 
+ALTER TABLE sa_contracts MOVE TABLESPACE SL_P_CONTRACTS;
+ALTER TABLE sa_contracts ADD (contract_num NUMBER);
+UPDATE sa_contracts SET contract_num = contract_id_seq.NEXTVAL;
 
-create table ta_source_emp_contracts as --generate data about employees
+create table sa_emp_contracts as --generate data about employees
 SELECT
-     emp_name
+    date_of_contract
+    ,emp_name
     ,emp_lastname
     ,phone_number
     ,email
-FROM(select 
-        a.first_name emp_name
+FROM(select
+        TO_DATE(
+              TRUNC(
+                   DBMS_RANDOM.VALUE(TO_CHAR(DATE '2016-01-01','J')
+                                    ,TO_CHAR(DATE '2020-12-31','J')
+                                    )
+                    ),'J') date_of_contract 
+        ,a.first_name emp_name
         ,b.last_name emp_lastname
         ,ROUND(dbms_random.value(100000000000, 999999999999)) phone_number
         ,lower(substr(a.first_name,0,1))||lower(a.last_name)||'@gmail.com' email
@@ -88,10 +101,10 @@ FROM(select
 from data_excel a,data_excel b) sub
 where rn<1501
 ;
-
-ALTER TABLE ta_source_emp_contracts MOVE TABLESPACE SL_P_CONTRACTS;
-ALTER TABLE ta_source_emp_contracts ADD (contract_num NUMBER);
-UPDATE ta_source_emp_contracts SET contract_num = emp_contract_id_seq.NEXTVAL;
+CREATE SEQUENCE emp_contract_id_seq;
+ALTER TABLE sa_emp_contracts MOVE TABLESPACE SL_P_CONTRACTS;
+ALTER TABLE sa_emp_contracts ADD (contract_num NUMBER);
+UPDATE sa_emp_contracts SET contract_num = emp_contract_id_seq.NEXTVAL;
 
 create table sa_attendances as --generate data about provided services
 WITH cte_rnd AS (
@@ -112,13 +125,13 @@ FROM
     CONNECT BY
         level < 2000000 ) 
 ,cte_services AS (
-    SELECT /* +MATERIALIZE*/
+    SELECT /* +sa_service_typeMATERIALIZE*/
                 z.*,
         ROW_NUMBER()
         OVER(PARTITION BY 1
              ORDER BY service
         ) AS rn
-from gen_service_type z)
+from sa_service_type z)
 select  rownum attendance_num
         ,date_attendance
         ,child_name
@@ -129,9 +142,9 @@ select  rownum attendance_num
         ,kindergarten
         ,y.service
 from cte_rnd a
-inner join ta_source_contracts b on a.contract_num=b.contract_num
-inner join ta_source_emp_contracts c on a.emp_contract_num = c.contract_num
-inner join gen_kindergarten q on q.group_num=a.group_num
+inner join sa_contracts b on a.contract_num=b.contract_num
+inner join sa_emp_contracts c on a.emp_contract_num = c.contract_num
+inner join sa_kindergarten q on q.group_num=a.group_num
 inner join cte_services y  ON y.rn = a.service;
         
-ALTER TABLE ta_source_contracts MOVE TABLESPACE ts_p_attendances;        
+ALTER TABLE sa_attendances MOVE TABLESPACE ts_p_attendances;        
